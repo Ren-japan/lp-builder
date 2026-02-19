@@ -1,0 +1,259 @@
+{
+  "site": {
+    "title": "楽器買取店ランキング",
+    "subtitle": "買取ならSTYLE-LIVES",
+    "logo_text": "style-lives",
+    "logo_url": "",
+    "ad_label": "PR",
+    "favicon_url": ""
+  },
+  "colors": {
+    "main": "#e04631",
+    "sub": "#2e9f21",
+    "text": "#333333",
+    "bg": "#f5f5ef",
+    "white": "#ffffff",
+    "accent": "#f5a623"
+  },
+  "hero": {
+    "bg_image_url": "https://style-lives.com/gakki/assets/img/inst_mv_01.jpg.webp",
+    "title": "楽器\n買取業者",
+    "catch": "高く\n売れる！",
+    "sub_title": "ランキング",
+    "badges": ["全国\n出張", "高価\n買取", "即日\n払い"],
+    "campaign_text": "買取額UP♪\nキャンペーン中！",
+    "person_image_url": ""
+  },
+  "comparison_top": {
+    "heading": "高く売るならズバリ！\n専門業者で査定必須♪",
+    "shops": [
+      {
+        "name": "楽器の買取屋さん",
+        "logo_url": "https://style-lives.com/gakki/assets/img/cm_logo_kaitoriyasan.png.webp",
+        "link": "#shop1",
+        "metrics": [
+          {"label": "買取価格", "value": "買取数10万件超", "rating": "double_circle"},
+          {"label": "現金受取", "value": "最短当日30分～", "rating": "double_circle"}
+        ],
+        "cta_text": "【無料】申込みへ進む"
+      },
+      {
+        "name": "バイセル",
+        "logo_url": "https://style-lives.com/gakki/assets/img/cm_logo_buysell.png.webp",
+        "link": "#shop2",
+        "metrics": [
+          {"label": "買取価格", "value": "一般買取", "rating": "circle"},
+          {"label": "現金受取", "value": "即日査定", "rating": "double_circle"}
+        ],
+        "cta_text": "【無料】申込みへ進む"
+      },
+      {
+        "name": "アローズ",
+        "logo_url": "https://style-lives.com/gakki/assets/img/cm_logo_arrows.png.webp",
+        "link": "#shop3",
+        "metrics": [
+          {"label": "買取価格", "value": "専門業者", "rating": "double_circle"},
+          {"label": "現金受取", "value": "2~3日程度", "rating": "triangle"}
+        ],
+        "cta_text": "【無料】申込みへ進む"
+      }
+    ]
+  },
+  "recommend_section": {
+    "heading": "売りに出すなら\n楽器専門の買取業者が断然おすすめ！",
+    "description": "",
+    "comparison_image_url": ""
+  },
+  "detail_table": {
+    "heading": "",
+    "columns": ["楽器の買取屋さん", "バイセル", "楽器買取アローズ"],
+    "rows": [
+      {"label": "買取店", "cells": ["楽器買取専門\n専門査定士在籍", "総合買取\n専門査定士在籍", ""]},
+      {"label": "買取方法", "cells": ["出張、店頭、宅配、その他", "出張、店頭、宅配", "宅配"]},
+      {"label": "出張買取対応地域", "cells": ["全国※", "全国※", "対応なし"]},
+      {"label": "買取金額", "cells": ["相場より高い", "相場どおり", "相場どおり"]},
+      {"label": "対応スピード", "cells": ["最短30分から出張査定", "最短即日出張査定", "即日対応宅配手配"]},
+      {"label": "壊れた楽器", "cells": ["自社修理だから高く売れる", "相談できる", "一部相談可"]}
+    ],
+    "footer_note": "※一部地域要確認"
+  },
+  "shops": [
+    {
+      "id": "shop1",
+      "rank": 1,
+      "name": "楽器の買取屋さん",
+      "logo_url": "https://style-lives.com/gakki/assets/img/cm_logo_kaitoriyasan.png.webp",
+      "catch_copy": "すぐに出張／高く売れる優良業者",
+      "sub_catch": "最短30分で出張！\nプロが丁寧に買取査定！",
+      "link": "https://example.com/shop1",
+      "info": {
+        "買取方法": "出張/店頭/宅配買取/その他",
+        "査定料金": "完全無料",
+        "買取実績": "10万件以上",
+        "サービス": "最短即日 30分から査定",
+        "対応エリア": "全国対応",
+        "受付時間": "電話：9:00～20:00\nWEB：24時間"
+      },
+      "features": [
+        {
+          "title": "累計10万件以上の買取実績！",
+          "text": "楽器の買取屋さんは、老舗の楽器買取専門業者として、件数はもちろん10億円以上もの買取実績を上げています。\n楽器買取のプロだからこそ、破損、汚れ、古い楽器も買取相談できるのが嬉しいポイント。"
+        },
+        {
+          "title": "他社より高く買い取れる体制！",
+          "text": "楽器の買取屋さんは、レベルの高いプロ査定士が市場価値をしっかり見定めて査定！\nしかもWEB専門かつ自社で楽器修理できるので、コストを抑えられる分、どこよりも高値で買い取れるのが魅力です。"
+        },
+        {
+          "title": "申込から最短30分で到着！",
+          "text": "他社では1週間以上かかる見積も、楽器の買取屋さんなら出張買取でも最短当日完結！\n引っ越しなどですぐに手放したい人や面倒な手間や時間を掛けたくない人におすすめです。"
+        }
+      ],
+      "reviews": [
+        "タンスの肥やしになっていたので売却。汚れも目立っていたので多少でも値がついたのにびっくりしました！",
+        "家が近くだったので店頭で売却させてもらいました。対応してくださった店員さんが話しのわかる方で、査定額にも納得で売らせてもらいました！"
+      ],
+      "campaign": {
+        "text": "2月のお得なキャンペーン",
+        "sub_text": "＼抽選で買取額が大幅UP！／",
+        "image_url": ""
+      },
+      "cta_text": "楽器の買取屋さんに相談する",
+      "cta_sub": "＼信頼できる高価買取業者なら／"
+    },
+    {
+      "id": "shop2",
+      "rank": 2,
+      "name": "バイセル",
+      "logo_url": "https://style-lives.com/gakki/assets/img/cm_logo_buysell.png.webp",
+      "catch_copy": "大手ならではの安心取引が魅力",
+      "sub_catch": "最短即日出張！\n楽器に詳しい査定士が対応",
+      "link": "https://example.com/shop2",
+      "info": {
+        "買取方法": "出張/店頭/宅配買取",
+        "査定料金": "完全無料",
+        "買取実績": "3,700万点以上",
+        "サービス": "最短即日査定",
+        "対応エリア": "全国",
+        "受付時間": "電話：24時間\nWEB：24時間"
+      },
+      "features": [
+        {
+          "title": "大手だからできる安心取引が魅力",
+          "text": "バイセルは買取業界大手の業者でコンプライアンス体制が整っているのが特徴です。取引が不安な人へのサポートが手厚いのも魅力。"
+        },
+        {
+          "title": "出張買取費用が完全無料",
+          "text": "全国対応のバイセルは、出張買取にかかる相談・見積・出張費用などの手数料が0円なのが嬉しいポイント。"
+        }
+      ],
+      "reviews": [
+        "丁寧な対応でとてもよかったです。言葉遣いが丁寧でわかりやすくゆっくりと話していただけたので良かったです。"
+      ],
+      "campaign": {
+        "text": "2月のお得なキャンペーン",
+        "sub_text": "＼抽選で当たる／",
+        "image_url": ""
+      },
+      "cta_text": "バイセルに相談する",
+      "cta_sub": "＼24時間受付OK／"
+    },
+    {
+      "id": "shop3",
+      "rank": 3,
+      "name": "楽器買取アローズ",
+      "logo_url": "https://style-lives.com/gakki/assets/img/cm_logo_arrows.png.webp",
+      "catch_copy": "完全無料の宅配買取が人気！",
+      "sub_catch": "24時間査定申込OK！\n専門スタッフ対応",
+      "link": "https://example.com/shop3",
+      "info": {
+        "買取方法": "宅配",
+        "査定料金": "完全無料",
+        "買取実績": "- 要確認",
+        "サービス": "入金まで2～3日程度",
+        "対応エリア": "全国",
+        "受付時間": "電話：10:00～14:00 水日定休\nWEB：24時間"
+      },
+      "features": [
+        {
+          "title": "WEB専門だからできる高価買取",
+          "text": "楽器買取アローズは、実店舗を持たないことで店舗運営コストや販促コストを抑えてい分、高めに買取額へ反映できるのが特徴です。"
+        },
+        {
+          "title": "自分のペースで査定に出せる宅配買取",
+          "text": "楽器買取アローズでは、集荷までの期間自分のペースで楽器梱包できるのが特徴です。対面での査定が苦手な人でも安心して手続きできます。"
+        }
+      ],
+      "reviews": [
+        "初めて楽器の買取というものをしていただきました。買取金額はそんなに期待していませんでしたが9,000円の金額でした。私はこの値段で大満足です。"
+      ],
+      "campaign": {
+        "text": "2月のお得なキャンペーン",
+        "sub_text": "＼買取品全品が対象！／",
+        "image_url": ""
+      },
+      "cta_text": "楽器買取アローズに相談する",
+      "cta_sub": "＼負担が少ない宅配買取なら／"
+    }
+  ],
+  "flow": {
+    "heading": "出張買取の流れ",
+    "steps": [
+      {"title": "お申し込み", "text": "WEB、メール、電話、アプリなどで申込み", "icon": "📱"},
+      {"title": "日時を決める", "text": "希望の査定日時を選んで決定", "icon": "📅"},
+      {"title": "おうちで査定", "text": "10～30分程度で楽器を査定", "icon": "🔍"},
+      {"title": "契約成立で現金買取", "text": "買取価格に納得できればその場で現金受け取り", "icon": "💰"}
+    ]
+  },
+  "summary_table": {
+    "heading": "まとめ比較",
+    "shops": [
+      {
+        "name": "楽器の買取屋さん",
+        "features": "・楽器買取専門\n・口コミが良い\n・最短30分出張",
+        "scope": "相談可◎\n・壊れた楽器\n・部品欠品\n・汚れ",
+        "speed": "最短30分で出張",
+        "cta_text": "無料で相談する",
+        "link": "#shop1"
+      },
+      {
+        "name": "バイセル",
+        "features": "・安心取引制度\n・24時間受付",
+        "scope": "相談可◎\n・壊れた楽器\n・部品欠品\n・汚れ",
+        "speed": "最短当日出張",
+        "cta_text": "無料で相談する",
+        "link": "#shop2"
+      },
+      {
+        "name": "楽器買取アローズ",
+        "features": "・梱包材0円\n・熟練査定士",
+        "scope": "一部相談可◯\n・壊れた楽器",
+        "speed": "即日宅配手配",
+        "cta_text": "無料で相談する",
+        "link": "#shop3"
+      }
+    ]
+  },
+  "footer": {
+    "shop_links": [
+      {"name": "楽器の買取屋さん", "link": "#"},
+      {"name": "バイセル", "link": "#"},
+      {"name": "福ちゃん", "link": "#"}
+    ],
+    "column_links": [
+      {"name": "楽器買取業者とは？", "link": "#"},
+      {"name": "高価買取を狙うための方法", "link": "#"},
+      {"name": "サービスの流れ", "link": "#"}
+    ],
+    "copyright": "©2024 style-lives.com"
+  },
+  "sections_visibility": {
+    "hero": true,
+    "comparison_top": true,
+    "recommend_section": true,
+    "detail_table": true,
+    "shops": true,
+    "flow": true,
+    "summary_table": true,
+    "footer": true
+  }
+}
