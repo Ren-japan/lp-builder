@@ -192,12 +192,12 @@ SECTION_LABELS = {
 def edit_site_settings(config: dict):
     """サイト基本設定"""
     site = config["site"]
-    site["title"] = st.text_input("サイトタイトル", value=site["title"], key="site_title")
-    site["subtitle"] = st.text_input("サブタイトル", value=site["subtitle"], key="site_subtitle")
-    site["logo_text"] = st.text_input("ロゴテキスト", value=site["logo_text"], key="site_logo")
+    site["title"] = rich_text_input("サイトタイトル", site["title"], "site_title")
+    site["subtitle"] = rich_text_input("サブタイトル", site["subtitle"], "site_subtitle")
+    site["logo_text"] = rich_text_input("ロゴテキスト", site["logo_text"], "site_logo")
     st.markdown("**ロゴ画像**（テキストの代わりに画像を使う場合）")
     site["logo_url"] = image_uploader("ロゴ画像", site.get("logo_url", ""), "site_logo_img")
-    site["ad_label"] = st.text_input("広告表記", value=site["ad_label"], key="site_ad")
+    site["ad_label"] = rich_text_input("広告表記", site["ad_label"], "site_ad")
 
 
 def edit_colors(config: dict):
@@ -225,21 +225,21 @@ def edit_hero(config: dict):
 def edit_comparison_top(config: dict):
     """比較表トップ"""
     comp = config["comparison_top"]
-    comp["heading"] = st.text_area("見出し", value=comp["heading"], height=60, key="comp_heading")
+    comp["heading"] = rich_text_input("見出し", comp["heading"], "comp_heading")
 
     for i, shop in enumerate(comp["shops"]):
         st.markdown(f"**── 業者{i+1} ──**")
-        shop["name"] = st.text_input("業者名", value=shop["name"], key=f"comp_shop_name_{i}")
+        shop["name"] = rich_text_input("業者名", shop["name"], f"comp_shop_name_{i}")
         st.markdown("ロゴ画像")
         shop["logo_url"] = image_uploader(f"ロゴ {shop['name']}", shop["logo_url"], f"comp_shop_logo_{i}")
         shop["link"] = st.text_input("リンクURL", value=shop["link"], key=f"comp_shop_link_{i}")
-        shop["cta_text"] = st.text_input("CTAテキスト", value=shop["cta_text"], key=f"comp_shop_cta_{i}")
+        shop["cta_text"] = rich_text_input("CTAテキスト", shop["cta_text"], f"comp_shop_cta_{i}")
         for j, metric in enumerate(shop["metrics"]):
             mc1, mc2, mc3 = st.columns([2, 2, 1])
             with mc1:
-                metric["label"] = st.text_input("項目名", value=metric["label"], key=f"comp_m_label_{i}_{j}")
+                metric["label"] = rich_text_input("項目名", metric["label"], f"comp_m_label_{i}_{j}")
             with mc2:
-                metric["value"] = st.text_input("値", value=metric["value"], key=f"comp_m_val_{i}_{j}")
+                metric["value"] = rich_text_input("値", metric["value"], f"comp_m_val_{i}_{j}")
             with mc3:
                 metric["rating"] = st.selectbox(
                     "評価", ["double_circle", "circle", "triangle"],
@@ -272,23 +272,23 @@ def edit_recommend(config: dict):
 def edit_detail_table(config: dict):
     """詳細比較表"""
     dt = config["detail_table"]
-    dt["footer_note"] = st.text_input("注記", value=dt["footer_note"], key="dt_note")
+    dt["footer_note"] = rich_text_input("注記", dt["footer_note"], "dt_note")
 
     st.markdown("**カラム名（業者名）**")
     new_cols = []
     for i, col in enumerate(dt["columns"]):
-        val = st.text_input(f"カラム {i+1}", value=col, key=f"dt_col_{i}")
+        val = rich_text_input(f"カラム {i+1}", col, f"dt_col_{i}")
         new_cols.append(val)
     dt["columns"] = new_cols
 
     st.markdown("**行データ**")
     for i, row in enumerate(dt["rows"]):
         with st.expander(f"行: {row['label']}", expanded=False):
-            row["label"] = st.text_input("項目名", value=row["label"], key=f"dt_row_label_{i}")
+            row["label"] = rich_text_input("項目名", row["label"], f"dt_row_label_{i}")
             for j, val in enumerate(row["cells"]):
-                row["cells"][j] = st.text_input(
+                row["cells"][j] = rich_text_input(
                     f"{dt['columns'][j] if j < len(dt['columns']) else f'列{j+1}'}",
-                    value=val, key=f"dt_row_val_{i}_{j}")
+                    val, f"dt_row_val_{i}_{j}")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -307,10 +307,10 @@ def edit_shops(config: dict):
 
     for i, shop in enumerate(shops):
         with st.expander(f"業者 #{shop['rank']} : {shop['name']}", expanded=(i == 0)):
-            shop["name"] = st.text_input("業者名", value=shop["name"], key=f"shop_name_{i}")
+            shop["name"] = rich_text_input("業者名", shop["name"], f"shop_name_{i}")
             shop["rank"] = st.number_input("ランク", value=shop["rank"], min_value=1, key=f"shop_rank_{i}")
-            shop["catch_copy"] = st.text_input("キャッチコピー", value=shop["catch_copy"], key=f"shop_catch_{i}")
-            shop["sub_catch"] = st.text_area("サブキャッチ", value=shop["sub_catch"], height=60, key=f"shop_sub_{i}")
+            shop["catch_copy"] = rich_text_input("キャッチコピー", shop["catch_copy"], f"shop_catch_{i}")
+            shop["sub_catch"] = rich_text_input("サブキャッチ", shop["sub_catch"], f"shop_sub_{i}")
             shop["link"] = st.text_input("リンクURL", value=shop["link"], key=f"shop_link_{i}")
 
             # ロゴ画像
@@ -349,9 +349,9 @@ def edit_shops(config: dict):
                     val = shop["info"][key]
                     ik1, ik2, ik3 = st.columns([3, 5, 1])
                     with ik1:
-                        new_key = st.text_input("項目名", value=key, key=f"shop_info_k_{i}_{key}")
+                        new_key = rich_text_input("項目名", key, f"shop_info_k_{i}_{key}")
                     with ik2:
-                        new_val = st.text_input("値", value=val, key=f"shop_info_v_{i}_{key}")
+                        new_val = rich_text_input("値", val, f"shop_info_v_{i}_{key}")
                     with ik3:
                         delete_info = st.button("✕", key=f"shop_info_del_{i}_{key}")
                     if not delete_info:
@@ -366,7 +366,7 @@ def edit_shops(config: dict):
             if vis.get("features", True):
                 st.markdown("**特徴・メリット**")
                 for fi, feat in enumerate(shop["features"]):
-                    feat["title"] = st.text_input(f"特徴{fi+1} タイトル", value=feat["title"], key=f"shop_feat_t_{i}_{fi}")
+                    feat["title"] = rich_text_input(f"特徴{fi+1} タイトル", feat["title"], f"shop_feat_t_{i}_{fi}")
                     feat["text"] = rich_text_input(f"特徴{fi+1} 本文", feat["text"], f"shop_feat_x_{i}_{fi}")
                     # 特徴に画像スロット
                     feat.setdefault("image_url", "")
@@ -387,7 +387,7 @@ def edit_shops(config: dict):
                 st.markdown("**口コミ**")
                 new_reviews = []
                 for ri, rev in enumerate(shop["reviews"]):
-                    val = st.text_area(f"口コミ {ri+1}", value=rev, height=60, key=f"shop_rev_{i}_{ri}")
+                    val = rich_text_input(f"口コミ {ri+1}", rev, f"shop_rev_{i}_{ri}")
                     new_reviews.append(val)
                 shop["reviews"] = new_reviews
 
@@ -404,8 +404,8 @@ def edit_shops(config: dict):
             # ── キャンペーン ──
             if vis.get("campaign", True):
                 st.markdown("**キャンペーン**")
-                shop["campaign"]["text"] = st.text_input("キャンペーン名", value=shop["campaign"]["text"], key=f"shop_camp_t_{i}")
-                shop["campaign"]["sub_text"] = st.text_input("サブテキスト", value=shop["campaign"]["sub_text"], key=f"shop_camp_s_{i}")
+                shop["campaign"]["text"] = rich_text_input("キャンペーン名", shop["campaign"]["text"], f"shop_camp_t_{i}")
+                shop["campaign"]["sub_text"] = rich_text_input("サブテキスト", shop["campaign"]["sub_text"], f"shop_camp_s_{i}")
                 st.markdown("キャンペーン画像")
                 shop["campaign"]["image_url"] = image_uploader(
                     f"キャンペーン画像", shop["campaign"].get("image_url", ""), f"shop_camp_img_{i}")
@@ -413,8 +413,8 @@ def edit_shops(config: dict):
             # ── CTA ──
             if vis.get("cta", True):
                 st.markdown("**CTA**")
-                shop["cta_text"] = st.text_input("CTAテキスト", value=shop["cta_text"], key=f"shop_cta_t_{i}")
-                shop["cta_sub"] = st.text_input("CTAサブテキスト", value=shop["cta_sub"], key=f"shop_cta_s_{i}")
+                shop["cta_text"] = rich_text_input("CTAテキスト", shop["cta_text"], f"shop_cta_t_{i}")
+                shop["cta_sub"] = rich_text_input("CTAサブテキスト", shop["cta_sub"], f"shop_cta_s_{i}")
 
             # ── カード内 任意画像 ──
             st.markdown("---")
@@ -459,21 +459,17 @@ def edit_shops(config: dict):
 def edit_flow(config: dict):
     """フロー"""
     flow = config["flow"]
-    flow["heading"] = st.text_input("見出し", value=flow["heading"], key="flow_heading")
+    flow["heading"] = rich_text_input("見出し", flow["heading"], "flow_heading")
 
     for i, step in enumerate(flow["steps"]):
-        c1, c2, c3 = st.columns([1, 2, 4])
-        with c1:
-            # アイコン: テキスト or 画像
-            step.setdefault("icon_type", "emoji")
-            step["icon_type"] = st.selectbox(
-                "種類", ["emoji", "画像"],
-                index=0 if step.get("icon_type", "emoji") == "emoji" else 1,
-                key=f"flow_ico_type_{i}")
-        with c2:
-            step["title"] = st.text_input("ステップ名", value=step["title"], key=f"flow_title_{i}")
-        with c3:
-            step["text"] = st.text_input("説明", value=step["text"], key=f"flow_text_{i}")
+        # アイコン: テキスト or 画像
+        step.setdefault("icon_type", "emoji")
+        step["icon_type"] = st.selectbox(
+            "種類", ["emoji", "画像"],
+            index=0 if step.get("icon_type", "emoji") == "emoji" else 1,
+            key=f"flow_ico_type_{i}")
+        step["title"] = rich_text_input(f"ステップ{i+1} 名", step["title"], f"flow_title_{i}")
+        step["text"] = rich_text_input(f"ステップ{i+1} 説明", step["text"], f"flow_text_{i}")
 
         if step["icon_type"] == "emoji":
             step["icon"] = st.text_input("アイコン（絵文字）", value=step.get("icon", "📋"), key=f"flow_ico_{i}")
@@ -495,38 +491,32 @@ def edit_flow(config: dict):
 def edit_summary(config: dict):
     """まとめ比較"""
     st_tbl = config["summary_table"]
-    st_tbl["heading"] = st.text_input("見出し", value=st_tbl["heading"], key="sum_heading")
+    st_tbl["heading"] = rich_text_input("見出し", st_tbl["heading"], "sum_heading")
 
     for i, shop in enumerate(st_tbl["shops"]):
         with st.expander(f"{shop['name']}", expanded=False):
-            shop["name"] = st.text_input("業者名", value=shop["name"], key=f"sum_name_{i}")
-            shop["features"] = st.text_area("特徴", value=shop["features"], height=60, key=f"sum_feat_{i}")
-            shop["scope"] = st.text_area("買取範囲", value=shop["scope"], height=60, key=f"sum_scope_{i}")
-            shop["speed"] = st.text_input("スピード", value=shop["speed"], key=f"sum_speed_{i}")
-            shop["cta_text"] = st.text_input("CTAテキスト", value=shop["cta_text"], key=f"sum_cta_{i}")
+            shop["name"] = rich_text_input("業者名", shop["name"], f"sum_name_{i}")
+            shop["features"] = rich_text_input("特徴", shop["features"], f"sum_feat_{i}")
+            shop["scope"] = rich_text_input("買取範囲", shop["scope"], f"sum_scope_{i}")
+            shop["speed"] = rich_text_input("スピード", shop["speed"], f"sum_speed_{i}")
+            shop["cta_text"] = rich_text_input("CTAテキスト", shop["cta_text"], f"sum_cta_{i}")
             shop["link"] = st.text_input("リンク", value=shop["link"], key=f"sum_link_{i}")
 
 
 def edit_footer(config: dict):
     """フッター"""
     footer = config["footer"]
-    footer["copyright"] = st.text_input("コピーライト", value=footer["copyright"], key="footer_copy")
+    footer["copyright"] = rich_text_input("コピーライト", footer["copyright"], "footer_copy")
 
     st.markdown("**業者リンク**")
     for i, link in enumerate(footer["shop_links"]):
-        c1, c2 = st.columns(2)
-        with c1:
-            link["name"] = st.text_input("名前", value=link["name"], key=f"ftr_shop_name_{i}")
-        with c2:
-            link["link"] = st.text_input("URL", value=link["link"], key=f"ftr_shop_link_{i}")
+        link["name"] = rich_text_input(f"業者リンク{i+1} 名前", link["name"], f"ftr_shop_name_{i}")
+        link["link"] = st.text_input("URL", value=link["link"], key=f"ftr_shop_link_{i}")
 
     st.markdown("**コラムリンク**")
     for i, link in enumerate(footer["column_links"]):
-        c1, c2 = st.columns(2)
-        with c1:
-            link["name"] = st.text_input("名前", value=link["name"], key=f"ftr_col_name_{i}")
-        with c2:
-            link["link"] = st.text_input("URL", value=link["link"], key=f"ftr_col_link_{i}")
+        link["name"] = rich_text_input(f"コラムリンク{i+1} 名前", link["name"], f"ftr_col_name_{i}")
+        link["link"] = st.text_input("URL", value=link["link"], key=f"ftr_col_link_{i}")
 
 
 # セクション → 編集関数のマッピング
