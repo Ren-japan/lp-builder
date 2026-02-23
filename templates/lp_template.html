@@ -177,32 +177,18 @@ body {
 
 {% if sections_visibility.hero %}
 <!-- Hero -->
-<section class="hero">
+<section class="hero" data-section="hero">
   {% if hero.bg_image_url %}
   <img class="hero__bg" src="{{ hero.bg_image_url }}" alt="">
   {% else %}
   <div class="hero__bg" style="background: linear-gradient(135deg, #3a2a1a, #1a1a2e);"></div>
-  {% endif %}
-  {% if hero.title or hero.catch or hero.sub_title %}
-  <div class="hero__overlay">
-    {% if hero.catch %}<div class="hero__catch">{{ hero.catch }}</div>{% endif %}
-    {% if hero.title %}<h1 class="hero__title">{{ hero.title }}</h1>{% endif %}
-    {% if hero.sub_title %}<div class="hero__sub">{{ hero.sub_title }}</div>{% endif %}
-    {% if hero.badges %}
-    <div class="hero__badges">
-      {% for badge in hero.badges %}
-      <div class="hero__badge">{{ badge }}</div>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </div>
   {% endif %}
 </section>
 {% endif %}
 
 {% if sections_visibility.comparison_top %}
 <!-- Comparison Top -->
-<section class="section">
+<section class="section" data-section="comparison_top">
   <div class="inner">
     <div class="section__heading">{{ comparison_top.heading }}</div>
     <div class="comp-top">
@@ -249,7 +235,7 @@ body {
 
 {% if sections_visibility.recommend_section %}
 <!-- Recommend Section -->
-<section class="section">
+<section class="section" data-section="recommend_section">
   <div class="inner">
     <div class="section__heading">{{ recommend_section.heading }}</div>
   </div>
@@ -258,7 +244,7 @@ body {
 
 {% if sections_visibility.detail_table %}
 <!-- Detail Table -->
-<section class="section">
+<section class="section" data-section="detail_table">
   <div class="inner">
     <div class="detail-tbl">
       <table>
@@ -287,7 +273,7 @@ body {
 
 {% if sections_visibility.shops %}
 <!-- Shop Cards -->
-<section class="section">
+<section class="section" data-section="shops">
   <div class="inner">
     {% for shop in shops %}
     <div class="shop-card" id="{{ shop.id }}">
@@ -375,7 +361,7 @@ body {
 
 {% if sections_visibility.flow %}
 <!-- Flow -->
-<section class="section">
+<section class="section" data-section="flow">
   <div class="inner">
     <div class="section__heading">{{ flow.heading }}</div>
     <div class="flow-section">
@@ -403,7 +389,7 @@ body {
 
 {% if sections_visibility.summary_table %}
 <!-- Summary -->
-<section class="section summary-section">
+<section class="section summary-section" data-section="summary_table">
   <div class="inner">
     <div class="section__heading">{{ summary_table.heading }}</div>
     <div class="summary-tbl">
@@ -432,7 +418,7 @@ body {
 
 {% if sections_visibility.footer %}
 <!-- Footer -->
-<footer class="footer">
+<footer class="footer" data-section="footer">
   <div class="inner">
     <div class="footer__links">
       {% for link in footer.shop_links %}
@@ -447,5 +433,33 @@ body {
 </footer>
 {% endif %}
 
+<!-- Section hover labels + click to jump -->
+<style>
+[data-section] { position: relative; cursor: pointer; transition: outline 0.15s; }
+[data-section]:hover { outline: 2px solid rgba(0,120,255,0.5); outline-offset: 2px; }
+[data-section]:hover::after {
+  content: attr(data-label);
+  position: absolute; top: 4px; right: 4px; z-index: 100;
+  background: rgba(0,120,255,0.85); color: #fff; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap;
+}
+</style>
+<script>
+(function(){
+  var labels = {
+    hero: 'ヒーロー', comparison_top: '比較表', recommend_section: 'おすすめ',
+    detail_table: '詳細比較表', shops: '業者カード', flow: 'フロー',
+    summary_table: 'まとめ比較', footer: 'フッター'
+  };
+  document.querySelectorAll('[data-section]').forEach(function(el){
+    var key = el.getAttribute('data-section');
+    el.setAttribute('data-label', labels[key] || key);
+    el.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      window.parent.postMessage({type:'section-click', section: key}, '*');
+    });
+  });
+})();
+</script>
 </body>
 </html>

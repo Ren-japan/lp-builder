@@ -11,6 +11,7 @@ import io
 import zipfile
 import re
 import streamlit as st
+from streamlit_quill import st_quill
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
@@ -59,10 +60,8 @@ div[data-testid="stExpander"] { border: 1px solid #e0e0e0; border-radius: 8px; m
     overflow-y: auto;
 }
 
-/* 装飾ボタン */
-.deco-btn { display: inline-block; padding: 2px 8px; margin: 1px; border-radius: 4px;
-    font-size: 12px; cursor: pointer; border: 1px solid #ccc; background: #f9f9f9; }
-.deco-btn:hover { background: #e0e0e0; }
+/* Quill エディタ調整 */
+.stQuill > div { min-height: 80px; }
 
 /* 画像アップロードエリア */
 .img-upload-area { border: 2px dashed #ccc; border-radius: 8px; padding: 12px; text-align: center; }
@@ -119,16 +118,31 @@ def image_uploader(label: str, current_url: str, key: str) -> str:
 
 
 # ══════════════════════════════════════════
-# ── テキスト装飾ユーティリティ ──
+# ── テキスト装飾ユーティリティ（WYSIWYG） ──
 # ══════════════════════════════════════════
+# Quill ツールバー設定（WordPress ブロックエディタ風）
+QUILL_TOOLBAR = [
+    ["bold", "italic", "underline", "strike"],
+    [{"color": []}, {"background": []}],
+    [{"size": ["small", False, "large", "huge"]}],
+    ["link"],
+    ["clean"],
+]
+
+
 def rich_text_input(label: str, value: str, key: str, height: int = 80) -> str:
-    """装飾対応テキスト入力。HTMLタグ付きテキストを返す。
-    対応: <b>, <span style='color:...'>, <mark>
+    """WYSIWYG装飾エディタ。HTMLを返す。
+    ツールバー: 太字 / 斜体 / 下線 / 打ち消し / 文字色 / 背景色 / サイズ / リンク
     """
-    text = st.text_area(label, value=value, height=height, key=key)
-    # 装飾ヘルプ
-    st.caption("装飾: `<b>太字</b>` `<span style='color:red'>色字</span>` `<mark>マーカー</mark>`")
-    return text
+    st.caption(label)
+    result = st_quill(
+        value=value,
+        html=True,
+        toolbar=QUILL_TOOLBAR,
+        key=key,
+        placeholder=f"{label}を入力...",
+    )
+    return result if result is not None else value
 
 
 # ══════════════════════════════════════════
@@ -201,37 +215,11 @@ def edit_colors(config: dict):
 
 
 def edit_hero(config: dict):
-    """ヒーローセクション - 画像メイン"""
+    """ヒーローセクション - 画像のみ"""
     hero = config["hero"]
-
     st.markdown("**メインビジュアル画像**")
     hero["bg_image_url"] = image_uploader("FV画像", hero["bg_image_url"], "hero_bg")
-
-    st.markdown("---")
-    st.markdown("**オーバーレイテキスト**（画像の上に表示。不要なら空欄）")
-    hero["title"] = st.text_area("メインタイトル", value=hero["title"], height=60, key="hero_title")
-    hero["catch"] = st.text_input("キャッチコピー", value=hero["catch"], key="hero_catch")
-    hero["sub_title"] = st.text_input("サブタイトル", value=hero["sub_title"], key="hero_sub")
-
-    show_badges = st.checkbox("バッジ表示", value=len(hero.get("badges", [])) > 0, key="hero_show_badges")
-    if show_badges:
-        new_badges = []
-        for i, badge in enumerate(hero.get("badges", [])):
-            val = st.text_input(f"バッジ {i+1}", value=badge, key=f"hero_badge_{i}")
-            new_badges.append(val)
-        hero["badges"] = new_badges
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("＋ バッジ追加", key="add_badge"):
-                hero["badges"].append("新規\nバッジ")
-                st.rerun()
-        with col2:
-            if len(hero["badges"]) > 1 and st.button("－ 最後を削除", key="rm_badge"):
-                hero["badges"].pop()
-                st.rerun()
-    else:
-        hero["badges"] = []
+    st.caption("FV/MVは画像1枚で完結します。テキストは画像内に含めてください。")
 
 
 def edit_comparison_top(config: dict):
@@ -740,15 +728,64 @@ def main():
 
         html_output = render_html(render_config)
 
-        # iframe でプレビュー表示
+        # iframe でプレビュー表示（クリック連動付き）
         iframe_width = f"width: {width}px; margin: 0 auto;" if width else "width: 100%;"
+        section_label_map = json.dumps(SECTION_LABELS, ensure_ascii=False)
         iframe_html = f"""
-        <div style="{iframe_width} border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff;">
-            <iframe srcdoc='{html_output.replace("'", "&#39;")}'
+        <div style="{iframe_width} border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; position: relative;">
+            <div id="section-toast" style="display:none; position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:999;
+                background:rgba(0,120,255,0.9); color:#fff; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:600;
+                pointer-events:none; transition:opacity 0.3s;">
+            </div>
+            <iframe id="lp-preview" srcdoc='{html_output.replace("'", "&#39;")}'
                     style="width: 100%; height: calc(100vh - 160px); min-height: 600px; border: none;"
-                    sandbox="allow-same-origin">
+                    sandbox="allow-same-origin allow-scripts">
             </iframe>
         </div>
+        <script>
+        (function() {{
+            var labels = {section_label_map};
+            window.addEventListener('message', function(e) {{
+                if (e.data && e.data.type === 'section-click') {{
+                    var section = e.data.section;
+                    var label = labels[section] || section;
+
+                    // トースト表示
+                    var toast = document.getElementById('section-toast');
+                    toast.textContent = '✏️ ' + label + ' を編集';
+                    toast.style.display = 'block';
+                    toast.style.opacity = '1';
+                    setTimeout(function() {{ toast.style.opacity = '0'; setTimeout(function(){{ toast.style.display = 'none'; }}, 300); }}, 2000);
+
+                    // 親ページ（Streamlit）のexpanderを探してクリック＆スクロール
+                    var mainDoc = window.parent.document;
+                    var expanders = mainDoc.querySelectorAll('[data-testid="stExpander"]');
+                    for (var i = 0; i < expanders.length; i++) {{
+                        var summary = expanders[i].querySelector('summary, [data-testid="stExpanderToggleDetails"]');
+                        if (summary) {{
+                            var text = summary.textContent || summary.innerText || '';
+                            if (text.indexOf(label) !== -1) {{
+                                // まだ閉じてたら開く
+                                var details = expanders[i].querySelector('details');
+                                if (details && !details.open) {{
+                                    summary.click();
+                                }}
+                                // スクロール
+                                expanders[i].scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+                                // ハイライト
+                                expanders[i].style.outline = '2px solid #0078ff';
+                                expanders[i].style.outlineOffset = '2px';
+                                setTimeout(function() {{
+                                    expanders[i].style.outline = 'none';
+                                }}, 2500);
+                                break;
+                            }}
+                        }}
+                    }}
+                }}
+            }});
+        }})();
+        </script>
         """
         st.components.v1.html(iframe_html, height=900, scrolling=False)
 
