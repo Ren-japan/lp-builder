@@ -1,11 +1,15 @@
 """
-LP Builder - ノーコードLP量産ツール
-基礎LPをベースに、テキスト・画像・リンクを差し替えてLP②を量産する
+LP Builder - ノーコードLP量産ツール v2
+基礎LPをベースに、テキスト・画像・リンクを差し替えてLP量産
 """
 from __future__ import annotations
 
 import json
 import copy
+import base64
+import io
+import zipfile
+import re
 import streamlit as st
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
@@ -54,22 +58,93 @@ div[data-testid="stExpander"] { border: 1px solid #e0e0e0; border-radius: 8px; m
     max-height: 100vh;
     overflow-y: auto;
 }
+
+/* 装飾ボタン */
+.deco-btn { display: inline-block; padding: 2px 8px; margin: 1px; border-radius: 4px;
+    font-size: 12px; cursor: pointer; border: 1px solid #ccc; background: #f9f9f9; }
+.deco-btn:hover { background: #e0e0e0; }
+
+/* 画像アップロードエリア */
+.img-upload-area { border: 2px dashed #ccc; border-radius: 8px; padding: 12px; text-align: center; }
+.img-preview { max-width: 200px; border-radius: 6px; margin-top: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── ユーティリティ ──
+# ══════════════════════════════════════════
+# ── 画像管理ユーティリティ ──
+# ══════════════════════════════════════════
+def image_to_base64(uploaded_file) -> str:
+    """アップロードファイルをBase64データURIに変換"""
+    bytes_data = uploaded_file.getvalue()
+    mime = uploaded_file.type or "image/png"
+    b64 = base64.b64encode(bytes_data).decode()
+    return f"data:{mime};base64,{b64}"
+
+
+def image_uploader(label: str, current_url: str, key: str) -> str:
+    """画像アップロード or URL入力のUIコンポーネント。返り値は画像URL/Base64"""
+    mode = st.radio(
+        f"{label} - ソース選択",
+        ["URLで指定", "画像をアップロード"],
+        horizontal=True,
+        key=f"{key}_mode",
+        label_visibility="collapsed",
+    )
+
+    if mode == "画像をアップロード":
+        uploaded = st.file_uploader(
+            f"{label}",
+            type=["png", "jpg", "jpeg", "gif", "webp", "svg"],
+            key=f"{key}_file",
+            label_visibility="collapsed",
+        )
+        if uploaded:
+            b64_url = image_to_base64(uploaded)
+            # セッションに保持
+            st.session_state.setdefault("uploaded_images", {})[key] = {
+                "data_uri": b64_url,
+                "filename": uploaded.name,
+                "bytes": uploaded.getvalue(),
+                "mime": uploaded.type,
+            }
+            return b64_url
+        elif key in st.session_state.get("uploaded_images", {}):
+            return st.session_state["uploaded_images"][key]["data_uri"]
+        elif current_url and not current_url.startswith("data:"):
+            return current_url
+        return current_url
+    else:
+        return st.text_input(f"{label} URL", value=current_url if not current_url.startswith("data:") else "", key=f"{key}_url")
+
+
+# ══════════════════════════════════════════
+# ── テキスト装飾ユーティリティ ──
+# ══════════════════════════════════════════
+def rich_text_input(label: str, value: str, key: str, height: int = 80) -> str:
+    """装飾対応テキスト入力。HTMLタグ付きテキストを返す。
+    対応: <b>, <span style='color:...'>, <mark>
+    """
+    text = st.text_area(label, value=value, height=height, key=key)
+    # 装飾ヘルプ
+    st.caption("装飾: `<b>太字</b>` `<span style='color:red'>色字</span>` `<mark>マーカー</mark>`")
+    return text
+
+
+# ══════════════════════════════════════════
+# ── コア関数 ──
+# ══════════════════════════════════════════
 def load_config(path: Path) -> dict:
     """JSONファイルから設定を読み込む"""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def render_html(config: dict) -> str:
+def render_html(config: dict, for_export: bool = False) -> str:
     """Jinja2テンプレートを使ってHTMLをレンダリング"""
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)))
     template = env.get_template("lp_template.html")
-    return template.render(**config)
+    return template.render(**config, for_export=for_export)
 
 
 def init_session_state():
@@ -81,6 +156,8 @@ def init_session_state():
             "hero", "comparison_top", "recommend_section",
             "detail_table", "shops", "flow", "summary_table", "footer"
         ]
+    if "uploaded_images" not in st.session_state:
+        st.session_state.uploaded_images = {}
 
 
 SECTION_LABELS = {
@@ -95,13 +172,17 @@ SECTION_LABELS = {
 }
 
 
+# ══════════════════════════════════════════
 # ── セクション編集UI ──
+# ══════════════════════════════════════════
 def edit_site_settings(config: dict):
     """サイト基本設定"""
     site = config["site"]
     site["title"] = st.text_input("サイトタイトル", value=site["title"], key="site_title")
     site["subtitle"] = st.text_input("サブタイトル", value=site["subtitle"], key="site_subtitle")
     site["logo_text"] = st.text_input("ロゴテキスト", value=site["logo_text"], key="site_logo")
+    st.markdown("**ロゴ画像**（テキストの代わりに画像を使う場合）")
+    site["logo_url"] = image_uploader("ロゴ画像", site.get("logo_url", ""), "site_logo_img")
     site["ad_label"] = st.text_input("広告表記", value=site["ad_label"], key="site_ad")
 
 
@@ -120,29 +201,37 @@ def edit_colors(config: dict):
 
 
 def edit_hero(config: dict):
-    """ヒーローセクション"""
+    """ヒーローセクション - 画像メイン"""
     hero = config["hero"]
-    hero["title"] = st.text_area("メインタイトル", value=hero["title"], height=80, key="hero_title")
+
+    st.markdown("**メインビジュアル画像**")
+    hero["bg_image_url"] = image_uploader("FV画像", hero["bg_image_url"], "hero_bg")
+
+    st.markdown("---")
+    st.markdown("**オーバーレイテキスト**（画像の上に表示。不要なら空欄）")
+    hero["title"] = st.text_area("メインタイトル", value=hero["title"], height=60, key="hero_title")
     hero["catch"] = st.text_input("キャッチコピー", value=hero["catch"], key="hero_catch")
     hero["sub_title"] = st.text_input("サブタイトル", value=hero["sub_title"], key="hero_sub")
-    hero["bg_image_url"] = st.text_input("背景画像URL", value=hero["bg_image_url"], key="hero_bg")
 
-    st.markdown("**バッジ（USP）**")
-    new_badges = []
-    for i, badge in enumerate(hero["badges"]):
-        val = st.text_input(f"バッジ {i+1}", value=badge, key=f"hero_badge_{i}")
-        new_badges.append(val)
-    hero["badges"] = new_badges
+    show_badges = st.checkbox("バッジ表示", value=len(hero.get("badges", [])) > 0, key="hero_show_badges")
+    if show_badges:
+        new_badges = []
+        for i, badge in enumerate(hero.get("badges", [])):
+            val = st.text_input(f"バッジ {i+1}", value=badge, key=f"hero_badge_{i}")
+            new_badges.append(val)
+        hero["badges"] = new_badges
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("＋ バッジ追加", key="add_badge"):
-            hero["badges"].append("新規\nバッジ")
-            st.rerun()
-    with col2:
-        if len(hero["badges"]) > 1 and st.button("－ 最後を削除", key="rm_badge"):
-            hero["badges"].pop()
-            st.rerun()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("＋ バッジ追加", key="add_badge"):
+                hero["badges"].append("新規\nバッジ")
+                st.rerun()
+        with col2:
+            if len(hero["badges"]) > 1 and st.button("－ 最後を削除", key="rm_badge"):
+                hero["badges"].pop()
+                st.rerun()
+    else:
+        hero["badges"] = []
 
 
 def edit_comparison_top(config: dict):
@@ -152,16 +241,17 @@ def edit_comparison_top(config: dict):
 
     for i, shop in enumerate(comp["shops"]):
         st.markdown(f"**── 業者{i+1} ──**")
-        shop["name"] = st.text_input(f"業者名", value=shop["name"], key=f"comp_shop_name_{i}")
-        shop["logo_url"] = st.text_input(f"ロゴURL", value=shop["logo_url"], key=f"comp_shop_logo_{i}")
-        shop["link"] = st.text_input(f"リンクURL", value=shop["link"], key=f"comp_shop_link_{i}")
-        shop["cta_text"] = st.text_input(f"CTAテキスト", value=shop["cta_text"], key=f"comp_shop_cta_{i}")
+        shop["name"] = st.text_input("業者名", value=shop["name"], key=f"comp_shop_name_{i}")
+        st.markdown("ロゴ画像")
+        shop["logo_url"] = image_uploader(f"ロゴ {shop['name']}", shop["logo_url"], f"comp_shop_logo_{i}")
+        shop["link"] = st.text_input("リンクURL", value=shop["link"], key=f"comp_shop_link_{i}")
+        shop["cta_text"] = st.text_input("CTAテキスト", value=shop["cta_text"], key=f"comp_shop_cta_{i}")
         for j, metric in enumerate(shop["metrics"]):
             mc1, mc2, mc3 = st.columns([2, 2, 1])
             with mc1:
-                metric["label"] = st.text_input(f"項目名", value=metric["label"], key=f"comp_m_label_{i}_{j}")
+                metric["label"] = st.text_input("項目名", value=metric["label"], key=f"comp_m_label_{i}_{j}")
             with mc2:
-                metric["value"] = st.text_input(f"値", value=metric["value"], key=f"comp_m_val_{i}_{j}")
+                metric["value"] = st.text_input("値", value=metric["value"], key=f"comp_m_val_{i}_{j}")
             with mc3:
                 metric["rating"] = st.selectbox(
                     "評価", ["double_circle", "circle", "triangle"],
@@ -188,7 +278,7 @@ def edit_comparison_top(config: dict):
 def edit_recommend(config: dict):
     """おすすめメッセージ"""
     rec = config["recommend_section"]
-    rec["heading"] = st.text_area("見出し", value=rec["heading"], height=80, key="rec_heading")
+    rec["heading"] = rich_text_input("見出し", rec["heading"], "rec_heading")
 
 
 def edit_detail_table(config: dict):
@@ -234,55 +324,126 @@ def edit_shops(config: dict):
             shop["catch_copy"] = st.text_input("キャッチコピー", value=shop["catch_copy"], key=f"shop_catch_{i}")
             shop["sub_catch"] = st.text_area("サブキャッチ", value=shop["sub_catch"], height=60, key=f"shop_sub_{i}")
             shop["link"] = st.text_input("リンクURL", value=shop["link"], key=f"shop_link_{i}")
-            shop["logo_url"] = st.text_input("ロゴURL", value=shop["logo_url"], key=f"shop_logo_{i}")
 
-            st.markdown("**基本情報**")
-            new_info = {}
-            for key, val in shop["info"].items():
-                new_val = st.text_input(key, value=val, key=f"shop_info_{i}_{key}")
-                new_info[key] = new_val
-            shop["info"] = new_info
+            # ロゴ画像
+            st.markdown("**ロゴ画像**")
+            shop["logo_url"] = image_uploader(f"ロゴ {shop['name']}", shop["logo_url"], f"shop_logo_{i}")
 
-            st.markdown("**特徴・メリット**")
-            for fi, feat in enumerate(shop["features"]):
-                feat["title"] = st.text_input(f"特徴{fi+1} タイトル", value=feat["title"], key=f"shop_feat_t_{i}_{fi}")
-                feat["text"] = st.text_area(f"特徴{fi+1} 本文", value=feat["text"], height=80, key=f"shop_feat_x_{i}_{fi}")
+            # ── 要素 ON/OFF ──
+            st.markdown("---")
+            st.markdown("**表示する要素**")
 
-            f1, f2 = st.columns(2)
-            with f1:
-                if st.button(f"＋ 特徴追加", key=f"add_feat_{i}"):
-                    shop["features"].append({"title": "新しい特徴", "text": "説明"})
+            # 要素のON/OFFをconfigに保持
+            shop.setdefault("visibility", {
+                "info": True, "features": True, "reviews": True,
+                "campaign": True, "cta": True
+            })
+            vis = shop["visibility"]
+
+            vis_cols = st.columns(5)
+            with vis_cols[0]:
+                vis["info"] = st.checkbox("基本情報", value=vis.get("info", True), key=f"shop_vis_info_{i}")
+            with vis_cols[1]:
+                vis["features"] = st.checkbox("特徴", value=vis.get("features", True), key=f"shop_vis_feat_{i}")
+            with vis_cols[2]:
+                vis["reviews"] = st.checkbox("口コミ", value=vis.get("reviews", True), key=f"shop_vis_rev_{i}")
+            with vis_cols[3]:
+                vis["campaign"] = st.checkbox("キャンペーン", value=vis.get("campaign", True), key=f"shop_vis_camp_{i}")
+            with vis_cols[4]:
+                vis["cta"] = st.checkbox("CTA", value=vis.get("cta", True), key=f"shop_vis_cta_{i}")
+
+            # ── 基本情報 ──
+            if vis.get("info", True):
+                st.markdown("**基本情報**")
+                new_info = {}
+                info_keys = list(shop["info"].keys())
+                for key in info_keys:
+                    val = shop["info"][key]
+                    ik1, ik2, ik3 = st.columns([3, 5, 1])
+                    with ik1:
+                        new_key = st.text_input("項目名", value=key, key=f"shop_info_k_{i}_{key}")
+                    with ik2:
+                        new_val = st.text_input("値", value=val, key=f"shop_info_v_{i}_{key}")
+                    with ik3:
+                        delete_info = st.button("✕", key=f"shop_info_del_{i}_{key}")
+                    if not delete_info:
+                        new_info[new_key] = new_val
+                shop["info"] = new_info
+
+                if st.button(f"＋ 基本情報を追加", key=f"add_info_{i}"):
+                    shop["info"][f"新項目{len(shop['info'])+1}"] = ""
                     st.rerun()
-            with f2:
-                if len(shop["features"]) > 1 and st.button(f"－ 特徴削除", key=f"rm_feat_{i}"):
-                    shop["features"].pop()
-                    st.rerun()
 
-            st.markdown("**口コミ**")
-            new_reviews = []
-            for ri, rev in enumerate(shop["reviews"]):
-                val = st.text_area(f"口コミ {ri+1}", value=rev, height=60, key=f"shop_rev_{i}_{ri}")
-                new_reviews.append(val)
-            shop["reviews"] = new_reviews
+            # ── 特徴 ──
+            if vis.get("features", True):
+                st.markdown("**特徴・メリット**")
+                for fi, feat in enumerate(shop["features"]):
+                    feat["title"] = st.text_input(f"特徴{fi+1} タイトル", value=feat["title"], key=f"shop_feat_t_{i}_{fi}")
+                    feat["text"] = rich_text_input(f"特徴{fi+1} 本文", feat["text"], f"shop_feat_x_{i}_{fi}")
+                    # 特徴に画像スロット
+                    feat.setdefault("image_url", "")
+                    feat["image_url"] = image_uploader(f"特徴{fi+1}画像", feat["image_url"], f"shop_feat_img_{i}_{fi}")
 
-            r1, r2 = st.columns(2)
-            with r1:
-                if st.button(f"＋ 口コミ追加", key=f"add_rev_{i}"):
-                    shop["reviews"].append("新しい口コミ")
-                    st.rerun()
-            with r2:
-                if len(shop["reviews"]) > 0 and st.button(f"－ 口コミ削除", key=f"rm_rev_{i}"):
-                    shop["reviews"].pop()
-                    st.rerun()
+                f1, f2 = st.columns(2)
+                with f1:
+                    if st.button(f"＋ 特徴追加", key=f"add_feat_{i}"):
+                        shop["features"].append({"title": "新しい特徴", "text": "説明", "image_url": ""})
+                        st.rerun()
+                with f2:
+                    if len(shop["features"]) > 1 and st.button(f"－ 特徴削除", key=f"rm_feat_{i}"):
+                        shop["features"].pop()
+                        st.rerun()
 
-            st.markdown("**キャンペーン**")
-            shop["campaign"]["text"] = st.text_input("キャンペーン名", value=shop["campaign"]["text"], key=f"shop_camp_t_{i}")
-            shop["campaign"]["sub_text"] = st.text_input("サブテキスト", value=shop["campaign"]["sub_text"], key=f"shop_camp_s_{i}")
-            shop["campaign"]["image_url"] = st.text_input("画像URL", value=shop["campaign"].get("image_url", ""), key=f"shop_camp_img_{i}")
+            # ── 口コミ ──
+            if vis.get("reviews", True):
+                st.markdown("**口コミ**")
+                new_reviews = []
+                for ri, rev in enumerate(shop["reviews"]):
+                    val = st.text_area(f"口コミ {ri+1}", value=rev, height=60, key=f"shop_rev_{i}_{ri}")
+                    new_reviews.append(val)
+                shop["reviews"] = new_reviews
 
-            st.markdown("**CTA**")
-            shop["cta_text"] = st.text_input("CTAテキスト", value=shop["cta_text"], key=f"shop_cta_t_{i}")
-            shop["cta_sub"] = st.text_input("CTAサブテキスト", value=shop["cta_sub"], key=f"shop_cta_s_{i}")
+                r1, r2 = st.columns(2)
+                with r1:
+                    if st.button(f"＋ 口コミ追加", key=f"add_rev_{i}"):
+                        shop["reviews"].append("新しい口コミ")
+                        st.rerun()
+                with r2:
+                    if len(shop["reviews"]) > 0 and st.button(f"－ 口コミ削除", key=f"rm_rev_{i}"):
+                        shop["reviews"].pop()
+                        st.rerun()
+
+            # ── キャンペーン ──
+            if vis.get("campaign", True):
+                st.markdown("**キャンペーン**")
+                shop["campaign"]["text"] = st.text_input("キャンペーン名", value=shop["campaign"]["text"], key=f"shop_camp_t_{i}")
+                shop["campaign"]["sub_text"] = st.text_input("サブテキスト", value=shop["campaign"]["sub_text"], key=f"shop_camp_s_{i}")
+                st.markdown("キャンペーン画像")
+                shop["campaign"]["image_url"] = image_uploader(
+                    f"キャンペーン画像", shop["campaign"].get("image_url", ""), f"shop_camp_img_{i}")
+
+            # ── CTA ──
+            if vis.get("cta", True):
+                st.markdown("**CTA**")
+                shop["cta_text"] = st.text_input("CTAテキスト", value=shop["cta_text"], key=f"shop_cta_t_{i}")
+                shop["cta_sub"] = st.text_input("CTAサブテキスト", value=shop["cta_sub"], key=f"shop_cta_s_{i}")
+
+            # ── カード内 任意画像 ──
+            st.markdown("---")
+            st.markdown("**追加画像スロット**（カード内に自由に画像を入れる）")
+            shop.setdefault("extra_images", [])
+            for ei, eimg in enumerate(shop["extra_images"]):
+                ec1, ec2 = st.columns([4, 1])
+                with ec1:
+                    shop["extra_images"][ei] = image_uploader(
+                        f"追加画像{ei+1}", eimg, f"shop_extra_img_{i}_{ei}")
+                with ec2:
+                    if st.button("✕", key=f"rm_extra_img_{i}_{ei}"):
+                        shop["extra_images"].pop(ei)
+                        st.rerun()
+            if st.button(f"＋ 画像スロット追加", key=f"add_extra_img_{i}"):
+                shop["extra_images"].append("")
+                st.rerun()
 
     col1, col2 = st.columns(2)
     with col1:
@@ -292,7 +453,9 @@ def edit_shops(config: dict):
                 "logo_url": "", "catch_copy": "", "sub_catch": "",
                 "link": "#", "info": {}, "features": [], "reviews": [],
                 "campaign": {"text": "", "sub_text": "", "image_url": ""},
-                "cta_text": "相談する", "cta_sub": ""
+                "cta_text": "相談する", "cta_sub": "",
+                "visibility": {"info": True, "features": True, "reviews": True, "campaign": True, "cta": True},
+                "extra_images": [],
             }
             new_shop["id"] = f"shop{len(shops) + 1}"
             new_shop["rank"] = len(shops) + 1
@@ -313,16 +476,27 @@ def edit_flow(config: dict):
     for i, step in enumerate(flow["steps"]):
         c1, c2, c3 = st.columns([1, 2, 4])
         with c1:
-            step["icon"] = st.text_input(f"アイコン", value=step["icon"], key=f"flow_ico_{i}")
+            # アイコン: テキスト or 画像
+            step.setdefault("icon_type", "emoji")
+            step["icon_type"] = st.selectbox(
+                "種類", ["emoji", "画像"],
+                index=0 if step.get("icon_type", "emoji") == "emoji" else 1,
+                key=f"flow_ico_type_{i}")
         with c2:
-            step["title"] = st.text_input(f"ステップ名", value=step["title"], key=f"flow_title_{i}")
+            step["title"] = st.text_input("ステップ名", value=step["title"], key=f"flow_title_{i}")
         with c3:
-            step["text"] = st.text_input(f"説明", value=step["text"], key=f"flow_text_{i}")
+            step["text"] = st.text_input("説明", value=step["text"], key=f"flow_text_{i}")
+
+        if step["icon_type"] == "emoji":
+            step["icon"] = st.text_input("アイコン（絵文字）", value=step.get("icon", "📋"), key=f"flow_ico_{i}")
+        else:
+            step.setdefault("icon_image_url", "")
+            step["icon_image_url"] = image_uploader(f"ステップ{i+1}アイコン画像", step.get("icon_image_url", ""), f"flow_ico_img_{i}")
 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("＋ ステップ追加", key="add_step"):
-            flow["steps"].append({"title": "新ステップ", "text": "説明", "icon": "📋"})
+            flow["steps"].append({"title": "新ステップ", "text": "説明", "icon": "📋", "icon_type": "emoji"})
             st.rerun()
     with col2:
         if len(flow["steps"]) > 1 and st.button("－ ステップ削除", key="rm_step"):
@@ -354,17 +528,17 @@ def edit_footer(config: dict):
     for i, link in enumerate(footer["shop_links"]):
         c1, c2 = st.columns(2)
         with c1:
-            link["name"] = st.text_input(f"名前", value=link["name"], key=f"ftr_shop_name_{i}")
+            link["name"] = st.text_input("名前", value=link["name"], key=f"ftr_shop_name_{i}")
         with c2:
-            link["link"] = st.text_input(f"URL", value=link["link"], key=f"ftr_shop_link_{i}")
+            link["link"] = st.text_input("URL", value=link["link"], key=f"ftr_shop_link_{i}")
 
     st.markdown("**コラムリンク**")
     for i, link in enumerate(footer["column_links"]):
         c1, c2 = st.columns(2)
         with c1:
-            link["name"] = st.text_input(f"名前", value=link["name"], key=f"ftr_col_name_{i}")
+            link["name"] = st.text_input("名前", value=link["name"], key=f"ftr_col_name_{i}")
         with c2:
-            link["link"] = st.text_input(f"URL", value=link["link"], key=f"ftr_col_link_{i}")
+            link["link"] = st.text_input("URL", value=link["link"], key=f"ftr_col_link_{i}")
 
 
 # セクション → 編集関数のマッピング
@@ -380,7 +554,82 @@ SECTION_EDITORS = {
 }
 
 
+# ══════════════════════════════════════════
+# ── エクスポート（ZIP） ──
+# ══════════════════════════════════════════
+def create_export_zip(config: dict) -> bytes:
+    """HTML + images/ フォルダをZIPで書き出す。
+    Base64画像を実ファイルに変換し、HTMLの参照を相対パスに置換。
+    """
+    export_config = copy.deepcopy(config)
+    image_files = {}  # {filename: bytes}
+    img_counter = [0]
+
+    def extract_base64_image(data_uri: str, prefix: str = "img") -> str:
+        """data:URI → ファイルに切り出してパスを返す"""
+        if not data_uri or not data_uri.startswith("data:"):
+            return data_uri
+        # data:image/png;base64,xxxxx...
+        match = re.match(r"data:(image/\w+);base64,(.*)", data_uri, re.DOTALL)
+        if not match:
+            return data_uri
+        mime = match.group(1)
+        ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
+                    "image/webp": ".webp", "image/svg+xml": ".svg"}
+        ext = ext_map.get(mime, ".png")
+        img_counter[0] += 1
+        filename = f"{prefix}_{img_counter[0]:03d}{ext}"
+        raw_bytes = base64.b64decode(match.group(2))
+        image_files[filename] = raw_bytes
+        return f"images/{filename}"
+
+    # サイトロゴ
+    if export_config["site"].get("logo_url"):
+        export_config["site"]["logo_url"] = extract_base64_image(
+            export_config["site"]["logo_url"], "logo")
+
+    # Hero
+    export_config["hero"]["bg_image_url"] = extract_base64_image(
+        export_config["hero"]["bg_image_url"], "hero")
+
+    # 比較表ロゴ
+    for s in export_config["comparison_top"]["shops"]:
+        s["logo_url"] = extract_base64_image(s["logo_url"], "comp_logo")
+
+    # 業者カード
+    for s in export_config["shops"]:
+        s["logo_url"] = extract_base64_image(s["logo_url"], "shop_logo")
+        if s.get("campaign", {}).get("image_url"):
+            s["campaign"]["image_url"] = extract_base64_image(
+                s["campaign"]["image_url"], "campaign")
+        for feat in s.get("features", []):
+            if feat.get("image_url"):
+                feat["image_url"] = extract_base64_image(feat["image_url"], "feature")
+        for ei, eimg in enumerate(s.get("extra_images", [])):
+            if eimg:
+                s["extra_images"][ei] = extract_base64_image(eimg, "extra")
+
+    # フロー
+    for step in export_config["flow"]["steps"]:
+        if step.get("icon_image_url"):
+            step["icon_image_url"] = extract_base64_image(step["icon_image_url"], "flow_icon")
+
+    # HTML生成
+    html_str = render_html(export_config, for_export=True)
+
+    # ZIP作成
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("index.html", html_str)
+        for fname, fbytes in image_files.items():
+            zf.writestr(f"images/{fname}", fbytes)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+# ══════════════════════════════════════════
 # ── メインアプリ ──
+# ══════════════════════════════════════════
 def main():
     init_session_state()
     config = st.session_state.config
@@ -406,11 +655,12 @@ def main():
         json_str = json.dumps(config, ensure_ascii=False, indent=2)
         st.download_button("💾 JSON保存", json_str, file_name="lp_config.json", mime="application/json")
     with tb3:
-        html_str = render_html(config)
-        st.download_button("📄 HTMLエクスポート", html_str, file_name="lp_output.html", mime="text/html")
+        zip_bytes = create_export_zip(config)
+        st.download_button("📦 ZIPエクスポート", zip_bytes, file_name="lp_export.zip", mime="application/zip")
     with tb4:
         if st.button("🔄 デフォルトに戻す"):
             st.session_state.config = load_config(DEFAULT_CONFIG)
+            st.session_state.uploaded_images = {}
             st.rerun()
     with tb5:
         if st.button("📋 設定を複製"):
@@ -459,7 +709,7 @@ def main():
                     order[idx], order[idx+1] = order[idx+1], order[idx]
                     st.rerun()
             with hdr4:
-                pass  # placeholder
+                pass
 
             # 編集UI
             if visibility.get(section_key, True) and section_key in SECTION_EDITORS:
@@ -471,11 +721,9 @@ def main():
         st.markdown("### 👁️ プレビュー")
 
         # プレビューサイズ切替
-        pv1, pv2, pv3 = st.columns(3)
-        with pv1:
-            preview_mode = st.radio(
-                "表示サイズ", ["PC (780px)", "SP (375px)", "フル幅"],
-                horizontal=True, key="preview_mode", label_visibility="collapsed")
+        preview_mode = st.radio(
+            "表示サイズ", ["PC (780px)", "SP (375px)", "フル幅"],
+            horizontal=True, key="preview_mode", label_visibility="collapsed")
 
         if preview_mode == "PC (780px)":
             width = 780
@@ -487,7 +735,6 @@ def main():
         # セクション順序を反映した設定でレンダリング
         render_config = copy.deepcopy(config)
 
-        # セクション順序に応じて shops のランクを更新
         for i, shop in enumerate(render_config.get("shops", [])):
             shop["rank"] = i + 1
 
