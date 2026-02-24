@@ -92,6 +92,7 @@ def image_uploader(label: str, current_url: str, key: str) -> str:
     )
 
     if mode == "画像をアップロード":
+        has_saved = key in st.session_state.get("uploaded_images", {})
         uploaded = st.file_uploader(
             f"{label}",
             type=["png", "jpg", "jpeg", "gif", "webp", "svg"],
@@ -100,7 +101,6 @@ def image_uploader(label: str, current_url: str, key: str) -> str:
         )
         if uploaded:
             b64_url = image_to_base64(uploaded)
-            # セッションに保持
             st.session_state.setdefault("uploaded_images", {})[key] = {
                 "data_uri": b64_url,
                 "filename": uploaded.name,
@@ -108,13 +108,31 @@ def image_uploader(label: str, current_url: str, key: str) -> str:
                 "mime": uploaded.type,
             }
             return b64_url
-        elif key in st.session_state.get("uploaded_images", {}):
-            return st.session_state["uploaded_images"][key]["data_uri"]
+        elif has_saved:
+            # 保存済み画像あり → プレビュー + クリアボタン
+            saved = st.session_state["uploaded_images"][key]
+            col_prev, col_btn = st.columns([3, 1])
+            with col_prev:
+                st.caption(f"📎 {saved.get('filename', '画像')}")
+            with col_btn:
+                if st.button("✕ 削除", key=f"{key}_clear", type="secondary"):
+                    del st.session_state["uploaded_images"][key]
+                    st.rerun()
+            return saved["data_uri"]
         elif current_url and not current_url.startswith("data:"):
             return current_url
         return current_url
     else:
-        return st.text_input(f"{label} URL", value=current_url if not current_url.startswith("data:") else "", key=f"{key}_url")
+        url_val = current_url if not current_url.startswith("data:") else ""
+        col_input, col_btn = st.columns([5, 1])
+        with col_input:
+            new_url = st.text_input(f"{label} URL", value=url_val, key=f"{key}_url")
+        with col_btn:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+            if new_url and st.button("✕", key=f"{key}_url_clear", type="secondary"):
+                st.session_state[f"{key}_url"] = ""
+                st.rerun()
+        return new_url
 
 
 # ══════════════════════════════════════════
